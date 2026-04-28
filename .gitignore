@@ -1,0 +1,7 @@
+mydata.json
+*.pkl
+__pycache__/
+*.pyc
+venv/
+live_data.csv
+*.csv
