@@ -6,7 +6,7 @@ An AI-powered smart cooling system that uses a trained Random Forest machine lea
 
 ## Demo
 
-![Hardware Setup](demo/WhatsApp_Image_2026-04-23_at_3_50_47_PM__1_.jpeg)
+![Hardware Setup](demo/2026-04-23-154444_1920x1200_scrot.jpeg)
 
 ---
 
