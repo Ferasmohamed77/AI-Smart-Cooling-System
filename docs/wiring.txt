@@ -1,0 +1,99 @@
+================================================================
+WIRING — AI Smart Cooling System
+================================================================
+
+PIN NUMBERING
+-------------
+All GPIO pins in this project use BCM numbering.
+BCM = Broadcom chip pin number (not physical board position).
+Set in code with: GPIO.setmode(GPIO.BCM)
+
+
+COMPONENT CONNECTIONS
+----------------------
+
+1. DHT11 TEMPERATURE & HUMIDITY SENSOR
+   Pin         : GPIO 4  (Physical Pin 7)
+   VCC         : 3.3V    (Physical Pin 1)
+   GND         : GND     (Physical Pin 6)
+   Data        : GPIO 4  (Physical Pin 7)
+
+   Wiring:
+   DHT11 VCC  ──── 3.3V (Pin 1)
+   DHT11 GND  ──── GND  (Pin 6)
+   DHT11 DATA ──── GPIO 4 (Pin 7)
+
+
+2. GREEN LED — LOW TEMPERATURE INDICATOR
+   GPIO Pin    : GPIO 17 (Physical Pin 11)
+   Resistor    : 330Ω (in series with anode)
+
+   Wiring:
+   GPIO 17 (Pin 11) ──── 330Ω resistor ──── LED anode (+)
+   LED cathode (−)  ──── GND (Pin 9)
+
+
+3. YELLOW LED — MEDIUM TEMPERATURE INDICATOR
+   GPIO Pin    : GPIO 27 (Physical Pin 13)
+   Resistor    : 330Ω (in series with anode)
+
+   Wiring:
+   GPIO 27 (Pin 13) ──── 330Ω resistor ──── LED anode (+)
+   LED cathode (−)  ──── GND (Pin 9)
+
+
+4. RED LED — HIGH TEMPERATURE INDICATOR
+   GPIO Pin    : GPIO 22 (Physical Pin 15)
+   Resistor    : 330Ω (in series with anode)
+
+   Wiring:
+   GPIO 22 (Pin 15) ──── 330Ω resistor ──── LED anode (+)
+   LED cathode (−)  ──── GND (Pin 9)
+
+
+5. FAN LED — COOLING FAN INDICATOR
+   GPIO Pin    : GPIO 24 (Physical Pin 18)
+   Resistor    : 330Ω (in series with anode)
+
+   Wiring:
+   GPIO 24 (Pin 18) ──── 330Ω resistor ──── LED anode (+)
+   LED cathode (−)  ──── GND (Pin 9)
+
+   Note: In a real deployment, GPIO 24 connects to a relay
+   module that switches a physical cooling fan instead of an LED.
+
+
+SUMMARY TABLE
+-------------
+  Component          | GPIO (BCM) | Physical Pin | Direction
+  -------------------|------------|--------------|----------
+  DHT11 Data         | GPIO 4     | Pin 7        | INPUT
+  Green LED          | GPIO 17    | Pin 11       | OUTPUT
+  Yellow LED         | GPIO 27    | Pin 13       | OUTPUT
+  Red LED            | GPIO 22    | Pin 15       | OUTPUT
+  Fan LED            | GPIO 24    | Pin 18       | OUTPUT
+  DHT11 VCC          | 3.3V       | Pin 1        | POWER
+  All GND            | GND        | Pin 6/9      | GROUND
+
+
+IMPORTANT NOTES
+---------------
+1. ALWAYS use a 330Ω resistor in series with every LED.
+   Connecting LEDs directly to GPIO pins without resistors
+   will damage or destroy the Raspberry Pi 5.
+
+2. The DHT11 sensor requires at least 1 second between readings.
+   The system reads every 2 seconds for reliability.
+
+3. The DHT11 occasionally returns invalid readings.
+   These are automatically skipped by result.is_valid() check.
+
+4. All GPIO pins are configured as OUTPUT in the code:
+   GPIO.setup(pin, GPIO.OUT)
+   and are cleaned up on exit:
+   GPIO.cleanup()
+
+5. Do NOT connect any component to 5V pins for this project.
+   The DHT11 runs on 3.3V. LEDs are powered by GPIO (3.3V logic).
+
+================================================================

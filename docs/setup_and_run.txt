@@ -1,0 +1,132 @@
+================================================================
+SETUP AND RUN — AI Smart Cooling System
+================================================================
+
+REQUIREMENTS
+------------
+Hardware:
+  - Raspberry Pi 5
+  - DHT11 temperature and humidity sensor
+  - Green LED
+  - Yellow LED
+  - Red LED
+  - Fan LED (or relay module for real fan)
+  - Breadboard and jumper wires
+  - 330Ω resistors (one per LED)
+
+Software:
+  - Raspberry Pi OS (64-bit)
+  - Python 3.13
+  - Virtual environment (venv)
+
+
+STEP 1 — CREATE VIRTUAL ENVIRONMENT
+------------------------------------
+Open the terminal and run:
+
+  sudo apt install python3-venv -y
+  cd /path/to/your/project
+  python3 -m venv venv --system-site-packages
+  source venv/bin/activate
+
+
+STEP 2 — INSTALL LIBRARIES
+----------------------------
+With the virtual environment activated:
+
+  pip install RPi.GPIO dht11 --break-system-packages
+  pip install scikit-learn joblib pandas --break-system-packages
+  pip install matplotlib --break-system-packages
+  pip install google-auth google-auth-httplib2 google-auth-oauthlib google-api-python-client --break-system-packages
+
+Verify installation:
+  pip list
+
+
+STEP 3 — SET UP GOOGLE SHEETS API
+-----------------------------------
+1. Go to https://console.cloud.google.com
+2. Create a new project
+3. Enable: Google Sheets API and Google Drive API
+4. Go to Credentials → Create Credentials → Service Account
+5. Grant the service account Editor role
+6. Under Keys tab → Add Key → Create new key → JSON
+7. Download and rename the file to mydata.json
+8. Place mydata.json in the same folder as the scripts
+
+9. Create a new Google Sheet at https://sheets.google.com
+10. Add row 1 headers:
+    timestamp | temperature | humidity | temp_change | avg_temp | action
+11. Share the sheet with the service account email (Editor access)
+12. Copy the spreadsheet ID from the URL and paste it into
+    smart_logging_v2.py at the spreadsheet_id variable
+
+
+STEP 4 — SET UP PYTHON INTERPRETER IN THONNY
+----------------------------------------------
+1. Open Thonny
+2. Go to Tools → Options → Interpreter tab
+3. Select: Alternative Python 3 interpreter or virtual environment
+4. Navigate to: venv/bin/python3
+5. Click OK
+
+
+STEP 5 — COLLECT TRAINING DATA
+--------------------------------
+Run smart_logging_v2.py and let it collect data:
+
+  - Let sensor sit at room temperature → collects LOW readings
+  - Slowly warm the sensor → collects MEDIUM readings
+  - Rapidly warm the sensor → collects fast-rise HIGH readings
+  - Heat above 35°C → collects threshold HIGH readings
+  - Let it cool naturally
+
+Run for at least 10-15 minutes. Aim for 1000+ rows.
+
+Important: You MUST create fast-rise scenarios (rapidly warming
+the sensor) to teach the model early detection. Without these
+examples the fan will only trigger after temp hits 35°C.
+
+After collecting:
+  Google Sheets → File → Download → CSV
+  Place the CSV in your project folder.
+
+
+STEP 6 — TRAIN THE MODEL
+--------------------------
+Open train_model_v2.py and update the filename:
+  df = pd.read_csv("your_file_name.csv")
+
+Run train_model_v2.py and verify the output:
+  - Label distribution should show LOW, MEDIUM, and HIGH
+  - temp_change importance should be above 0.05
+  - All 5 sanity checks should show: pass
+
+The model is saved as model_v2.pkl automatically.
+
+
+STEP 7 — RUN THE SYSTEM
+-------------------------
+Run ai_final.py to start the live system:
+
+  python3 src/ai_final.py
+
+The terminal will show live readings:
+  T=27.5  Δ=0.90  Avg=26.77  Fan=ON (AI Early Trigger)  → HIGH
+  T=26.1  Δ=0.00  Avg=26.10  Fan=OFF  → LOW
+
+The live graph window opens after the first 2 readings.
+
+To stop: press Ctrl+C — the system will turn off all LEDs,
+release GPIO pins, and exit cleanly.
+
+
+UPDATING THE CODE
+------------------
+Any time you modify the scripts and want to save to GitHub:
+
+  git add .
+  git commit -m "describe your change"
+  git push
+
+================================================================

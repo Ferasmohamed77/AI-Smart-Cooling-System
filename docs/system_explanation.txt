@@ -1,0 +1,149 @@
+================================================================
+SYSTEM EXPLANATION — AI Smart Cooling System
+================================================================
+
+PROJECT GOAL
+------------
+Build an AI-powered cooling system on Raspberry Pi 5 that detects
+rapid temperature rises early and activates a fan BEFORE the
+temperature reaches a dangerous level — not after.
+
+This is the key difference from a simple thermostat:
+  Thermostat : fan ON when temp > 35°C
+  This system : fan ON when temp is rising fast at ANY temperature
+
+
+MACHINE LEARNING APPROACH
+--------------------------
+Algorithm : Random Forest Classifier
+Library   : scikit-learn
+Trees     : 200 decision trees (n_estimators=200)
+Classes   : LOW, MEDIUM, HIGH
+Training  : Supervised learning on real sensor data
+
+
+WHY RANDOM FOREST?
+-------------------
+A Random Forest builds many decision trees, each trained on a
+slightly different random sample of the data. When predicting,
+all trees vote and the majority wins.
+
+Advantages over a single decision tree:
+  - More stable and accurate predictions
+  - Less likely to memorize training data
+  - Handles the 4 features simultaneously (not one by one)
+  - Can detect complex patterns like fast-rise at low temperature
+
+
+THE 4 INPUT FEATURES
+---------------------
+The model receives these 4 values for every sensor reading:
+
+  1. temperature  (°C)
+     The raw current temperature. Most influential feature.
+
+  2. humidity     (%)
+     Current humidity. Has minor influence on predictions.
+
+  3. temp_change  (°C per 2 seconds)
+     How much temperature changed since the last reading.
+     This is the CRITICAL feature for early detection.
+     Positive = rising | Negative = falling | Zero = stable
+     A value of 1.1 means temperature rose 1.1°C in 2 seconds.
+
+  4. avg_temp     (°C)
+     Rolling average of the last 3 readings.
+     Smooths out noise and confirms the temperature trend.
+     Window of 3 was chosen to match training data exactly.
+
+Note: temp_change and avg_temp are ENGINEERED FEATURES — they are
+calculated from the raw sensor data, not read directly. Without
+them the model would only see current temperature and could not
+detect trends or rates of change.
+
+
+LABELING LOGIC
+---------------
+During training, each row is labeled using this priority order:
+
+  PRIORITY 1 (checked first):
+    if temp_change >= 0.5 AND avg_temp > 25 → HIGH
+    This catches fast-rise scenarios at ANY temperature.
+    The fast-rise check must come FIRST — if it came after the
+    temp >= 35 check, it would rarely trigger because most HIGH
+    labels would already be assigned by temperature.
+
+  PRIORITY 2:
+    if temp >= 35 → HIGH     (threshold already crossed)
+    if temp >= 30 → MEDIUM   (warm but stable)
+    else          → LOW      (safe temperature)
+
+
+CLASS WEIGHT BALANCING
+-----------------------
+The dataset has far more LOW readings than fast-rise HIGH readings.
+Without correction, the model ignores rare examples.
+
+Solution: class_weight='balanced'
+This automatically increases the weight of rare classes so the
+model learns from fast-rise examples even when they are few.
+
+
+FEATURE IMPORTANCE RESULTS
+---------------------------
+After training, feature importance shows how much each input
+contributed to the model's 200 decision trees:
+
+  temperature  : 0.50  ████████████████████
+  avg_temp     : 0.29  ████████████
+  temp_change  : 0.16  ██████        ← Must be > 0.05
+  humidity     : 0.05  ██
+
+If temp_change drops below 0.05, the model is not detecting fast
+rises. This means more fast-rise training data is needed.
+
+
+INFERENCE (RUNTIME)
+--------------------
+At runtime the model is NOT learning — it is predicting.
+This is called inference.
+
+Every 2 seconds:
+  1. Read temperature and humidity from DHT11
+  2. Calculate temp_change (current - previous)
+  3. Calculate avg_temp (average of last 3 readings)
+  4. Package all 4 values into a DataFrame
+  5. Call model.predict() → all 200 trees vote
+  6. Majority vote = prediction (LOW / MEDIUM / HIGH)
+  7. Control LEDs and fan based on prediction
+  8. Update live graph
+  9. Save to live_data.csv
+
+
+THREADING
+----------
+ai_final.py uses two parallel threads:
+
+  Sensor thread (background):
+    - Runs the sensor reading, AI prediction, and GPIO control
+    - Uses stop_event to exit cleanly on Ctrl+C
+
+  Main thread:
+    - Runs the matplotlib live graph
+    - Matplotlib must run on the main thread (OS requirement)
+
+A threading.Lock() protects shared data between threads so
+neither thread reads half-written values.
+
+
+TRAINING RESULTS (FINAL MODEL)
+--------------------------------
+  Total rows       : 1160
+  LOW labels       : 564
+  MEDIUM labels    : 343
+  HIGH labels      : 253
+  Training accuracy: 100%
+  temp_change imp. : 0.16 (fast-rise detection confirmed)
+  Sanity checks    : 5/5 passed
+
+================================================================

@@ -1,0 +1,113 @@
+================================================================
+HOW IT WORKS — AI Smart Cooling System
+================================================================
+
+OVERVIEW
+--------
+This system uses a trained Random Forest AI model to monitor
+temperature in real time and activate a cooling fan proactively —
+before the temperature reaches a dangerous level.
+
+Unlike a conventional thermostat that only reacts when temperature
+crosses a fixed threshold, this system detects RAPID TEMPERATURE
+RISES and acts early, even at low temperatures.
+
+
+THE AI PIPELINE
+---------------
+The project runs in 3 steps:
+
+  Step 1 — DATA COLLECTION (smart_logging_v2.py)
+    - Reads the DHT11 sensor every 2 seconds
+    - Calculates two AI features:
+        temp_change : how much temperature changed since last reading
+        avg_temp    : rolling average of last 3 readings
+    - Labels each reading as LOW, MEDIUM, or HIGH
+    - Logs everything automatically to Google Sheets
+
+  Step 2 — MODEL TRAINING (train_model_v2.py)
+    - Loads the collected CSV data from Google Sheets
+    - Applies smart labeling:
+        * Fast rise detected (temp_change >= 0.5 and avg_temp > 25) → HIGH
+        * temp >= 35°C → HIGH
+        * temp >= 30°C → MEDIUM
+        * temp < 30°C  → LOW
+    - Trains a Random Forest Classifier (200 decision trees)
+    - Uses class_weight='balanced' to handle rare fast-rise examples
+    - Saves the trained model as model_v2.pkl
+
+  Step 3 — LIVE AI CONTROL (ai_final.py)
+    - Loads model_v2.pkl
+    - Reads sensor every 2 seconds
+    - Feeds 4 features into the model: temperature, humidity,
+      temp_change, avg_temp
+    - Model predicts: LOW, MEDIUM, or HIGH
+    - Controls LEDs and fan based on prediction
+    - Displays a live real-time graph
+    - Saves all readings to live_data.csv
+
+
+HOW THE AI MAKES DECISIONS
+---------------------------
+The model receives 4 input values for every reading:
+
+  temperature  — current temperature (°C)
+  humidity     — current humidity (%)
+  temp_change  — rise/fall since last reading (°C)
+  avg_temp     — rolling average of last 3 readings (°C)
+
+All 200 decision trees vote on the prediction.
+The majority vote becomes the final answer: LOW, MEDIUM, or HIGH.
+
+Feature importance from training:
+  temperature  : 0.50  (primary signal)
+  avg_temp     : 0.29  (trend confirmation)
+  temp_change  : 0.16  (fast-rise detection) ← KEY FEATURE
+  humidity     : 0.05  (minor influence)
+
+
+FAN TRIGGER TYPES
+-----------------
+There are two reasons the fan can turn on:
+
+  1. AI EARLY TRIGGER
+     - prediction = HIGH
+     - temperature < 35°C
+     - temp_change > 0 (temperature is rising)
+     - This means the AI detected a fast rise and acted BEFORE
+       the threshold was crossed. This is the proactive behaviour
+       that makes this system smarter than a thermostat.
+
+  2. HIGH TEMP TRIGGER
+     - prediction = HIGH
+     - temperature >= 35°C
+     - Standard threshold-based activation.
+
+
+LED STATES
+----------
+  GREEN  (GPIO 17) — LOW    : temperature safe, fan OFF
+  YELLOW (GPIO 27) — MEDIUM : temperature warm, fan OFF
+  RED    (GPIO 22) — HIGH   : temperature high or fast rise, fan ON
+  FAN    (GPIO 24) — ON whenever prediction is HIGH
+
+
+LIVE GRAPH
+----------
+The graph (visible when running ai_final.py) shows:
+
+  Top chart:
+    - Blue solid line     : temperature
+    - Grey dashed line    : avg_temp
+    - Orange dotted line  : temp_change
+    - Blue vertical lines : fan triggered by AI early detection
+    - Red vertical lines  : fan triggered by temperature threshold
+    - Green/Yellow/Red background : current AI prediction zone
+
+  Bottom chart:
+    - Green bar  : LOW prediction, fan OFF
+    - Yellow bar : MEDIUM prediction, fan OFF
+    - Blue bar   : HIGH prediction, AI early trigger (temp < 35°C)
+    - Red bar    : HIGH prediction, temperature threshold (temp >= 35°C)
+
+================================================================
