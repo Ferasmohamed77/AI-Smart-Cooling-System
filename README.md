@@ -78,17 +78,26 @@ AI-Smart-Cooling-System/
 
 ---
 
-## Training Results
+## Model Evaluation
+
+The training labels come from a rule: a reading is HIGH if the temperature rises by 0.5°C or more with a rolling average above 25°C, or if it reaches 35°C; otherwise it is MEDIUM (30–35°C) or LOW. The Random Forest therefore learns to reproduce that rule from four features. A 100% score on the training data (1,160 rows) shows the rule was learned, not how well the model generalizes.
+
+To check that the rule is learned on readings the model has not seen, rather than memorized, `train_model_v2.py` holds out a stratified 20% test split, reports per-class precision and recall on it, and then retrains on all the data for deployment. Because the labels are deterministic, a high held-out score is expected; the step that would make this a genuine predictor is described under Next Steps.
 
 | Metric | Value |
 |--------|-------|
-| Training rows | 1160 |
-| Model accuracy | 100% |
-| temperature importance | 0.50 |
-| avg_temp importance | 0.29 |
-| temp_change importance | 0.16 ✅ |
-| humidity importance | 0.05 |
-| Sanity checks | 5/5 passed ✅ |
+| Logged readings | 1,160 |
+| Held-out test accuracy | *re-run `train_model_v2.py` to fill in* |
+| Feature importance | temperature 0.50 · avg_temp 0.29 · temp_change 0.16 · humidity 0.05 |
+| Hand-written scenario checks | 5/5 passed |
+
+`temp_change` carries 16% of the importance, which confirms the model uses the rate of rise and not just the absolute temperature.
+
+## Limitations and Next Steps
+
+- **Labels encode a rule.** Labelling each reading by whether the temperature *actually* crossed 35°C within the next N readings would turn this into a true early-warning predictor rather than a rule imitator.
+- **Small fast-rise class.** Only about 17 fast-rise examples occur at low or medium temperatures, so more logging under fast-heating conditions would make the early trigger more reliable.
+- **Single sensor.** The DHT11 has ±2°C accuracy and 1°C resolution; a DHT22 or DS18B20 would give cleaner `temp_change` values.
 
 ---
 
