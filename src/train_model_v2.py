@@ -128,26 +128,50 @@ y = df["action"]                                                   # Target labe
 #   will produce the exact same model. Without this, results
 #   vary slightly each run due to randomness in tree building.
 
-model = RandomForestClassifier(
-    n_estimators=200,
-    class_weight="balanced",
-    random_state=42
+def make_model():
+    return RandomForestClassifier(
+        n_estimators=200,
+        class_weight="balanced",
+        random_state=42
+    )
+
+# ================================================================
+# STEP 5 — EVALUATE ON HELD-OUT DATA
+# ================================================================
+# Training accuracy alone is misleading: a Random Forest memorizes
+# its training rows, so it scores ~100% on data it has already seen.
+# Instead, hold out 20% of the rows (stratified so every label keeps
+# its share), train on the other 80%, and report results on the
+# unseen 20%. This is the number worth quoting.
+
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, stratify=y, random_state=42
 )
 
-model.fit(X, y)   # Train the model — this is where the learning happens.
-                  # The model analyzes all 1160 rows and builds 200 trees.
+eval_model = make_model()
+eval_model.fit(X_train, y_train)
+y_pred = eval_model.predict(X_test)
+
+print(f"\nHeld-out test accuracy: {accuracy_score(y_test, y_pred):.4f}  "
+      f"({len(X_test)} unseen rows)")
+print("\nPer-class report on held-out data:")
+print(classification_report(y_test, y_pred, digits=3))
+labels_order = ["LOW", "MEDIUM", "HIGH"]
+print("Confusion matrix (rows = true, cols = predicted):", labels_order)
+print(confusion_matrix(y_test, y_pred, labels=labels_order))
 
 # ================================================================
-# STEP 5 — CHECK ACCURACY
+# STEP 5b — TRAIN THE FINAL MODEL ON ALL DATA
 # ================================================================
-# model.score() tests the model on the same training data and
-# returns the percentage of correct predictions (0.0 to 1.0).
-# 1.0 means 100% accuracy on training data, which is expected
-# for a Random Forest — it memorizes the training examples well.
-# The real test is how it performs on live sensor data.
+# Once the held-out check looks good, retrain on every row so the
+# deployed model learns from all available fast-rise examples.
 
-acc = model.score(X, y)
-print(f"\nTraining Accuracy: {acc:.4f}")
+model = make_model()
+model.fit(X, y)
+print(f"\nTraining accuracy (all rows, for reference only): {model.score(X, y):.4f}")
 
 # ================================================================
 # STEP 6 — FEATURE IMPORTANCE
