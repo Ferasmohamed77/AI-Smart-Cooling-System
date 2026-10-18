@@ -87,7 +87,6 @@ To check that the rule is learned on readings the model has not seen, rather tha
 | Metric | Value |
 |--------|-------|
 | Logged readings | 1,160 |
-| Held-out test accuracy | *re-run `train_model_v2.py` to fill in* |
 | Feature importance | temperature 0.50 · avg_temp 0.29 · temp_change 0.16 · humidity 0.05 |
 | Hand-written scenario checks | 5/5 passed |
 
